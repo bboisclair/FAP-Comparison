@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAP Comparison Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #005151;
+            color: white;
+            text-align: center;
+        }
+        .table-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        table {
+            width: 45%;
+            border-collapse: collapse;
+            color: black;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        caption {
+            color: white;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .highlight {
+            background-color: #ffdddd;
+        }
+    </style>
+</head>
+<body>
+    <h1>FAP Comparison Tool</h1>
+    <input type="file" id="fileInput1" accept=".json">
+    <input type="file" id="fileInput2" accept=".json">
+    <button id="compareButton">Compare Profiles</button>
+    
+    <div class="table-container">
+        <table id="dataTable1">
+            <caption>File 1 Data</caption>
+            <thead>
+                <tr>
+                    <th>Control Point Key</th>
+                    <th>Scope Name</th>
+                    <th>Action Name</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody1"></tbody>
+        </table>
+
+        <table id="dataTable2">
+            <caption>File 2 Data</caption>
+            <thead>
+                <tr>
+                    <th>Control Point Key</th>
+                    <th>Scope Name</th>
+                    <th>Action Name</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody2"></tbody>
+        </table>
+    </div>
+
+    <script>
+        document.getElementById('compareButton').addEventListener('click', function() {
+            const fileInput1 = document.getElementById('fileInput1');
+            const fileInput2 = document.getElementById('fileInput2');
+            const file1 = fileInput1.files[0];
+            const file2 = fileInput2.files[0];
+
+            if (!file1 || !file2) {
+                alert('Please upload two FAP JSON files.');
+                return;
+            }
+
+            const reader1 = new FileReader();
+            const reader2 = new FileReader();
+            let jsonData1, jsonData2;
+
+            reader1.onload = function(e) {
+                jsonData1 = JSON.parse(e.target.result);
+                reader2.readAsText(file2);
+            };
+
+            reader2.onload = function(e) {
+                jsonData2 = JSON.parse(e.target.result);
+
+                if (!Array.isArray(jsonData1) || !Array.isArray(jsonData2)) {
+                    alert('Both JSON files must contain arrays.');
+                    return;
+                }
+
+                // Map data from each file by Control Point Key + Action Name for easier comparison
+                const map1 = createDataMap(jsonData1);
+                const map2 = createDataMap(jsonData2);
+
+                // Display and compare data side by side
+                displayData(jsonData1, 'tableBody1', map2);
+                displayData(jsonData2, 'tableBody2', map1);
+            };
+
+            reader1.readAsText(file1);
+        });
+
+        function createDataMap(data) {
+            // Create a map with key as "ControlPointKey|ActionName" for easy lookup
+            return data.reduce((map, item) => {
+                const key = (item["@ControlPointKey"] || 'N/A') + '|' + (item["@ActionName"] || 'N/A');
+                map[key] = item;
+                return map;
+            }, {});
+        }
+
+        function displayData(data, tableBodyId, compareMap) {
+            const tableBody = document.getElementById(tableBodyId);
+            tableBody.innerHTML = ''; // Clear existing table data
+
+            data.forEach(item => {
+                const row = tableBody.insertRow();
+
+                const controlPoint = item["@ControlPointKey"] || 'N/A';
+                const scopeName = item["@ScopeName"] || 'N/A';
+                const actionName = item["@ActionName"] || 'N/A';
+
+                // Construct the key for comparison
+                const key = controlPoint + '|' + actionName;
+                const isMismatch = !compareMap[key];
+
+                // Insert cells and highlight if mismatch
+                const cell1 = row.insertCell(0);
+                cell1.textContent = controlPoint;
+                if (isMismatch) cell1.classList.add('highlight');
+
+                const cell2 = row.insertCell(1);
+                cell2.textContent = scopeName;
+
+                const cell3 = row.insertCell(2);
+                cell3.textContent = actionName;
+                if (isMismatch) cell3.classList.add('highlight');
+            });
+        }
+    </script>
+</body>
+</html>
